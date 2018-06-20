@@ -30,6 +30,12 @@ import {
 } from 'react-native-ui-kitten';
 
 import LevelBar from '../components/LevelBar';
+import {data} from '../data';
+
+import * as firebase from 'firebase';
+import { firebaseConfig } from '../configs/config';
+const firebaseApp = firebase.app();
+const rootRef = firebaseApp.database().ref();
 
 
 type Props = {};
@@ -41,11 +47,34 @@ YellowBox.ignoreWarnings([
 export default class HomePage extends Component  {
   
   componentDidMount () {
-    //setTimeout(() => this.setState({text: this._sourceData1}), 100);
-  };
+  
+    var onValueChange = rootRef.child('vocabulary').on("value", snapshot => {
+      const snapshotData = snapshot.val();
+  
+      var alllist = []
+      var listkey = []
+      var list = []
+      snapshot.forEach(childSnapshot => {
+        const key = childSnapshot.key;
+        const childData = childSnapshot.val();
+        listkey.push({key:key})
+        alllist.push({data:childData})
+        list.push({value:childData.word})
+        this.Animations = list.map((array,index) => new Animated.Value(0) );
+        this.setState({ AllData: alllist });
+        this.setState({ ListData: list });
+        console.log("dsfsdfsd",alllist)
+        console.log("dsfsdfsd",this.state.ListData)
+      })
+    })
+  }
+
+  componentWillUnmount () {
+    ref.off('value', onValueChange);
+  }
 
   constructor(props) {
-    super(props);
+    super(props);  
     
     this.value = 0;
     this.state = {
@@ -54,74 +83,39 @@ export default class HomePage extends Component  {
       page: 1,
       refreshing: false,
       loading: false,
-      data: this._sourceData,
+      ListData: [],
+      AllData:[],
       frontAnimatedStyle:0
     };
 
     this.renderItem = this._renderItem.bind(this);
-    this.Animations = this.state.data.map( (item,i) => new Animated.Value(0) );
+    
   }
 
-  CardOnClick(i) {
-
+  CardOnClick(info) {
+    console.log("asdasd",this.state.AllData[info.index].data.word)
     if (this.value >= 90) {
-      Animated.spring(this.Animations[i],{
+      Animated.spring(this.Animations[info.index],{
         toValue: 0,
         friction: 8,
         tension: 10         
       }).start();
     
-      const newData = [...this.state.data];  // 按下按鈕後更新 Array
-      newData.splice(i, 1, this._sourceData[i]);
-      this.setState({ data: newData });
-
+      const newData = [...this.state.ListData];  // 按下按鈕後更新 Array
+      newData.splice(info.index, 1, {"value":this.state.AllData[info.index].data.word});
+      this.setState({ ListData: newData });
     } else {
-      Animated.spring(this.Animations[i],{
+      Animated.spring(this.Animations[info.index],{
         toValue: 180,
         friction: 8,
         tension: 10
       }).start();
 
-      const newData = [...this.state.data];
-      newData.splice(i, 1, this._sourceData1[i]);
-      this.setState({ data: newData });
+      const newData = [...this.state.ListData];
+      newData.splice(info.index, 1, {"value":this.state.AllData[info.index].data.mean});
+      this.setState({ ListData: newData });
     }
-  }
-
-  _sourceData = [
-    {name: '大護法'},
-    {name: '繡春刀II：修羅戰場'},
-    {name: '神偷奶爸3'},
-    {name: '神奇女俠'},
-    {name: '摔跤吧，爸爸'},
-    {name: '悟空傳'},
-    {name: '閃光少女'},
-    {name: '攻殼機動隊'},
-    {name: '速度與激情8'},
-    {name: '蝙蝠俠大戰超人'},
-    {name: '攻殼機動隊'},
-    {name: '速度與激情8'},
-    {name: '蝙蝠俠大戰超人'}
-  ]
-
-
-  _sourceData1 = [
-    {name: '1'},
-    {name: '2'},
-    {name: '3'},
-    {name: '4'},
-    {name: '5'},
-    {name: '6'},
-    {name: '7'},
-    {name: '8'},
-    {name: '9'},
-    {name: '10'},
-    {name: '11'},
-    {name: '12'},
-    {name: '13'}    
-  ]
-
-  
+  }  
 
   _keyExtractor = (item, index) => index.toString();
 
@@ -142,21 +136,21 @@ export default class HomePage extends Component  {
       outputRange: ['0deg', '180deg'],
     });
 
-    const backInterpolate = this.Animations[info.index].interpolate({
-      inputRange: [0, 180],
-      outputRange: ['180deg', '360deg']
-    })
-
     const frontAnimatedStyle = {
       transform: [
         { rotateY: frontInterpolate}
       ], 
     }
 
-    const backAnimatedStyle = {
+    const frontInterpolate1 = this.Animations[info.index].interpolate({
+      inputRange: [0, 180],
+      outputRange: ['0deg', '180deg'],
+    });
+
+    const frontAnimatedStyle1 = {
       transform: [
-        { rotateY: '180deg' }
-      ]
+        { rotateY: frontInterpolate1}
+      ], 
     }
 
     this.Animations[info.index].addListener(({ value }) => {
@@ -167,7 +161,7 @@ export default class HomePage extends Component  {
 
     return (
       <TouchableWithoutFeedback 
-        onPress={() => this.CardOnClick(info.index)}>
+        onPress={() => this.CardOnClick(info)}>
         <Animated.View style={[frontAnimatedStyle]}>
           
           <Card
@@ -185,9 +179,9 @@ export default class HomePage extends Component  {
               shadowRadius: 2,
               elevation: 1}}>       
               
-              <Animated.View style={[frontAnimatedStyle]}>
+              <Animated.View style={[frontAnimatedStyle1]}>
                 <Text style={styles.cardText}>
-                  {info.item.name}
+                  {info.item.value}
                 </Text>
 
                 <View rkCardFooter>
@@ -211,7 +205,7 @@ export default class HomePage extends Component  {
         
         <FlatList
           ListEmptyComponent={this.createEmptyView()}
-          data={this.state.data}
+          data={this.state.ListData}
           renderItem={this.renderItem}
           keyExtractor={this._keyExtractor}
           style={styles.container}/>
@@ -226,7 +220,6 @@ let styles = RkStyleSheet.create(theme =>({
     flex: 1
   },
   flipCard: {
-    backfaceVisibility: 'hidden',
     backgroundColor: 'blue'
   },
   flipCardBack: {

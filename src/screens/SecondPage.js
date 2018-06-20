@@ -15,7 +15,7 @@ import {
 } from 'react-native-ui-kitten';
 
 import { 
-  Container
+  Container,List, ListItem,Button
 } from 'native-base';
 
 import { 
@@ -30,6 +30,11 @@ import ThirdPage from './ThirdPage';
 import { createStackNavigator } from 'react-navigation';
 
 import Icon from 'react-native-vector-icons/FontAwesome';
+
+import * as firebase from 'firebase';
+import { firebaseConfig } from '../configs/config';
+const firebaseApp = firebase.app();
+const rootRef = firebaseApp.database().ref();
 
 const datas = [
   {key: 'Simon Mignolet'},
@@ -68,12 +73,33 @@ YellowBox.ignoreWarnings([
       }    
     });
 
+componentDidMount () {
+  
+    rootRef.child('vocabulary').on("value", snapshot => {
+      const key = snapshot.key;
+      const snapshotData = snapshot.val();
+     
+      var list = []
+      var listKey = []
+      snapshot.forEach(childSnapshot => {
+        const key = childSnapshot.key;
+        const childData = childSnapshot.val();
+        console.log("key",key)
+        console.log("tetwetwe",childData);
+        listKey.push({key:key.word})
+        list.push({data:childData})
+        this.setState({ AllData: list,ListData:list });
+      })
+    })
+  }
+
 
     constructor(props) {
       super(props);
       this.ds = new ListView.DataSource({ rowHasChanged: (r1, r2) => r1 !== r2 });
       this.state = {
-        data:datas
+        AllData:[],
+        ListData:[],
       };
       this.renderRow = this._renderRow.bind(this);
       this.filter = this._filter.bind(this);
@@ -81,30 +107,38 @@ YellowBox.ignoreWarnings([
   }
 
   _renderRow(row) {
-    let name = `${row.key}`;
+    let word = `${row.data.word}`;
     return (
+      <ListItem>
         <View style={styles.container}>
-          <RkText>{name}</RkText>
+          <RkText>{word}</RkText>
         </View>
+      </ListItem>
     )
   }
 
  _filter(text) {
     let pattern = new RegExp(text, 'i');
 
-    let result = datas.filter((datas) => {
-      if (datas.key.search(pattern) != -1)
-        return datas
+    let result = this.state.AllData.filter((item) => {
+      if (item.data.word.search(pattern) != -1)
+        return item
       });
-
       this.setData(result);
   }
 
   _setData(data) {
     let ds = new ListView.DataSource({rowHasChanged: (r1, r2) => r1 !== r2});
     this.setState({
-      data: data
+      ListData: data
     })
+  }
+
+  deleteRow(data,secId, rowId, rowMap) {
+    rowMap[`${secId}${rowId}`].props.closeRow();
+    const newData = [...this.state.ListData];
+    newData.splice(rowId, 1);
+    this.setState({ ListData: newData });
   }
 
   render() {
@@ -121,12 +155,17 @@ YellowBox.ignoreWarnings([
           containerStyle={{ backgroundColor: '#f2f2f2' }}
           inputStyle={{ backgroundColor: '#fff' }}/>
 
-        <ListView
+        <List
           style={styles.root}
-          dataSource={this.ds.cloneWithRows(this.state.data)}
+          dataSource={this.ds.cloneWithRows(this.state.ListData)}
           renderRow={this.renderRow}
           renderSeparator={this.renderSeparator}
           enableEmptySections={true}
+          renderRightHiddenRow={(data, secId, rowId, rowMap) =>
+            <Button full danger onPress={_ => this.deleteRow(data,secId, rowId, rowMap)}>
+              <Icon active name="trash" />
+            </Button>}
+          rightOpenValue={-75}
         />
 
       </Container>

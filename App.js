@@ -22,19 +22,6 @@ import ThirdPage from './src/screens/ThirdPage';
 type Props = {};
 
 
-
-const ScreensHeader = createStackNavigator(
-  {
-    Home: HomePage,
-    Second: SecondPage,
-    Third:ThirdPage,
-  },
-  {
-    initialRouteName: 'Home',
-  }
-);
-
-
 export default class App extends Component<Props> {
 
   constructor(props) {
